@@ -1,0 +1,9 @@
+*.manifest
+*.res
+*.log
+*.tlog
+*.obj
+*.rc
+*.idb
+*.pdb
+*.[state]
