@@ -47,6 +47,8 @@ class GFX:
         self.Cursor_y = 0
         self.GFXfirst = 0x20
         self.GFXlast = 0x7e
+        self.TextColor = 65535
+        self.BgColor = 0
 
 
         if (self.font_name == "default" or self.font_name == "font5X8.bin"):
@@ -85,7 +87,7 @@ class GFX:
     def __exit__(self, exception_type, exception_value, traceback):
         self.deinit()
 
-    def draw_char(self, ch, x, y, color, bgcolor, size):
+    def draw_char(self, ch, x, y):
         
         # print("font_name: %s" % (self.font_name))
         # print("color: %d" % (self.TextColor))
@@ -109,6 +111,8 @@ class GFX:
                     if (line >> char_y) & 0x1:
                         # print("x: %d; y: %d" % (x + char_x, y + char_y))
                         self._pixel(x + char_x, y + char_y, self.TextColor)
+                        self.setCursorX = x + char_x
+                        self.setCursorY = y + char_y
         else:
         # Custom font (created by CPfontconvert.exe ( a stand-alone c++ program)
         # CPfontconvert takes a <fontfile.ttf> and creates a .py "Class" object that contains:
@@ -182,9 +186,13 @@ class GFX:
                         if (self.TextSize == 1):
                             self._pixel( x + xo + xx , y + yo + yy , self.TextColor)
                             # print("wrote pixel at x: %d; y: %d " % (x+xo+xx, y+yo+yy))
+                            self.setCursorX = x + xo + xx
+                            self.setCursorY = y + yo + yy
                         else:
-                            self.writeFillRect( int(x + ( xo + xx) * int(self.TextSize / 2)), int(y + (yo + yy) * (self.TextSize / 2)), 
-                                                self.TextSize, self.TextSize, color)
+                            self.writeFillRect( int(x + ( xo + xx) * int(self.TextSize / 2)), int(y + (yo + yy) * (self.TextSize)), 
+                                                self.TextSize, self.TextSize, self.TextColor)
+                            self.setCursorX = int(x + (xo + xx) * int(self.Textsize / 2))
+                            self.SetCursorY = int(y + (y0 + yy) * int(self.Textsize / 2))
                     tb = bitmapbyte << 1
                     if tb >= 256:
                         bitmapbyte = tb - 256
@@ -212,6 +220,9 @@ class GFX:
     def setCursor(self, x, y):
         self.Cursor_x = x
         self.Cursor_y = y
+        
+    def getCursor(self):
+        return self.Cursor_x, self.Cursor_y
                 
     def getCursorX(self):
         return self.CursorX
@@ -220,7 +231,8 @@ class GFX:
         return self.CursorY
         
     def setTextSize(self, s):
-        self.TextSize = s if s > 0 else 1
+        if s <= 0 or s > 3:
+            self.TextSize = 1
         
     def setTextWrap(self, wrap):   # wrap = true/false
         self.wrap = wrap
@@ -277,9 +289,9 @@ class GFX:
                             self.Cursor_y += self.TextSize * self.fontfile.GFXyadvance
                             if (self.Cursor_y  > self._height):
                                 self.Cursor_y = self.fontfile.GFXyadvance
-                            self.draw_char(tc, self.Cursor_x, self.Cursor_y, self.TextColor, self.BgColor, self.TextSize)
+                            self.draw_char(tc, self.Cursor_x, self.Cursor_y)
                         else:
-                            self.draw_char(tc, self.Cursor_x, self.Cursor_y, self.TextColor, self.BgColor, self.TextSize)
+                            self.draw_char(tc, self.Cursor_x, self.Cursor_y)
                     self.Cursor_x += self.cGlyph[3] * self.TextSize #advance cursor based on textsize and xadvance in glyph      
         else:
             # print("default font")
@@ -294,7 +306,7 @@ class GFX:
     
     
     
-    # - Pass a character, returns 
+    # - Pass a character, returns updated values of x, y, minx, miny, maxx, maxy
     def charBounds(self, c, x, y, minx, miny, maxx, maxy):
         if self.font_name  != "font5x8.bin" :    #   custom font
             if c == '\n':
