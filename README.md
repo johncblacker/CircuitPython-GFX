@@ -47,6 +47,10 @@ Functions provided in the CPtGFX.py module are:
   - fillRoundRect
   - drawTriangle
   - fillTriangle
+  - setRotation -   Rotate display into one of 4 different positions
+  - setScroll   -   enable scrolling
+  - readDisplayCommand -    issue a read command to the ILI9341 hardware
+  - writeDisplayCommand -   issue a write command to the ILI9341 hardware
   
   It's important to understand that although the screen (ILI9341, for example) specifies that x=0, y=0 is the upper left and default fonts wiil be rendered using the upper left as the base cursor position; converted fonts use the lower left corner of the "boundary box" as the baseline.  Take a look at the converted font files and you'll see that the "y" offset in the character glyph's is a negative number.  Point is, you'll have to do a little experimenting to find the ideal position for your lines.  If you were to write a line of text at point (0,0) you'd just see a single pixel line!  Read the write-up about the Adafruit GFX Graphics Library available on their website.  most of the graphics drawing (and text) functions follow the conventions outlined in the aforementioned write-up.  I've provided a basic test program that can be used to get started and provide some understanding of how to use this library.
   
