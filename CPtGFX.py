@@ -29,19 +29,28 @@
 
 
 import struct
+from adafruit_rgb_display.rgb import DisplaySPI
 
 
 
 
-class GFX:
+class GFX(DisplaySPI):
     GFX_HAS_FONTFILE = False
-    def __init__(self, swidth, sheight, pixel=None, font_name=None):
+    def __init__(self, swidth, sheight, pixel=None, font_name=None, write=None, read=None, 
+                    fill=None, scroll=None):
         self._width = swidth
+        self.WIDTH = swidth  #  These are raw screen size
+        self.HEIGHT = sheight   # variables - NEVER CHANGE!
         self._height = sheight
         self._pixel = pixel
         self.font_name = font_name
+        self.write = write
+        self.read = read
+        self.fill = fill
+        self.scroll = scroll
         self.fontfile = None
         self.TextSize = 1
+        self.Rotation = 0
         self.wrap = True   # default textwrap is true
         self.Cursor_x = 0
         self.Cursor_y = 0
@@ -49,6 +58,26 @@ class GFX:
         self.GFXlast = 0x7e
         self.TextColor = 65535
         self.BgColor = 0
+        
+        #   ILI9341 Read commands
+        self.ILI9341_RDMODE     =   0X0A    # row address order bottom to top
+        self.ILI9341_RDMADCTL   =   0X0B    # col address order right to left
+        self.ILI9341_RDPIXFMT   =   0X0C    # row/column exchange - reverse mode
+        self.ILI9341_RDIMGFMT   =   0X0D    # 
+        self.ILI9341_MADCTL     =   0X36    # set MADCTL values for rotation
+        
+        #   ILI9341 MADCTL Definitions
+        #   Note: if the corresponding bit is off (use & instead of |) meaning is reversed
+        #           so, for example 0xxxxxx sets row address order top to bottom, etc.
+        #           Default value after reset is 0x00 which can be verified via ...RDMACTL
+        #
+        self.ILI9341_MADCTL_MY  =   0X80    # row address order bottom to top
+        self.ILI9341_MADCTL_MX  =   0X40    # col address order right to left
+        self.ILI9341_MADCTL_MV  =   0X20    # row/column exchange - reverse mode
+        self.ILI9341_MADCTL_ML  =   0X10    # Vertical refresh order LCD refresh bottom to top
+        self.ILI9341_MADCTL_RGB =   0X00    # Pixel color order R-G-B
+        self.ILI9341_MADCTL_BGR =   0X08    # Pixel color order B-G-R
+        self.ILI9341_MADCTL_MH  =   0X04    # Horizontal refresh order right to left
 
 
         if (self.font_name == "default" or self.font_name == "font5X8.bin"):
@@ -147,9 +176,8 @@ class GFX:
             yo = self.cGlyph[5]
             bits = 0
             bit = 0
-                    
-        ## Todo: Add character clipping here
-
+        ##  THESE ARE ORIGINAL COMMENTS FROM Adafruit_GFX.cpp developer(not jb)           
+        ## Todo: Add character clipping here       
         ## NOTE: THERE IS NO 'BACKGROUND' COLOR OPTION ON CUSTOM FONTS.
         ## THIS IS ON PURPOSE AND BY DESIGN.  The background color feature
         ## has typically been used with the 'classic' font to overwrite old
@@ -159,7 +187,7 @@ class GFX:
         ## may overlap).  To replace previously-drawn text when using a custom
         ## font, use the getTextBounds() function to determine the smallest
         ## rectangle encompassing a string, erase the area with fillRect(),
-        ## then draw new text.  This WILL infortunately 'blink' the text, but
+        ## then draw new text.  This WILL unfortunately 'blink' the display, but
         ## is unavoidable.  Drawing 'background' pixels will NOT fix this,
         ## only creates a new set of problems.  Have an idea to work around
         ## this (a canvas object type for MCUs that can afford the RAM and
@@ -239,6 +267,13 @@ class GFX:
         
     def getTextWrap(self):
         return self.wrap
+        
+    def setFill(self, color):
+        self.fill(color)
+        
+    def setScroll(self, yval):
+        self.scroll(yval)
+        
         
     def getBitmap(self, ch):
         c = ord(ch) # convert string to an number
@@ -396,37 +431,38 @@ class GFX:
                     
                 
 
-    def width(self, text):
+    def getTextWidth(self, text):
         # Return the pixel width of the specified text message.
-        return len(text) * (self._font_width + 1)
+        # Note: THIS IS VALID FOR DEFAULT FONT ONLY!!!
+        if (self.font_name == 'font5x8.bin'):
+            return len(text) * (self._font_width + 1)
+        else:
+            return 0    # not valid for custom fonts
+            
+    def width(self):
+        return self._width
         
-    def writerectangle( self, x, y, w, h, color):
-        for i in range( x, x + w):
-            self.drawFastVLine(i, y, h, color)
+    def height(self):
+        return self._height
+        
             
     def drawRect(self, x, y, w, h, color): 
-        self.writeFastHLine(x, y, w, color)
-        self.writeFastHLine(x, y + h - 1, w, color)
-        self.writeFastVLine(x, y, h, color)
-        self.writeFastVLine(x + w - 1, y, h, color)
+        self.drawFastHLine(x, y, w, color)
+        self.drawFastHLine(x, y + h - 1, w, color)
+        self.drawFastVLine(x, y, h, color)
+        self.drawFastVLine(x + w - 1, y, h, color)
             
             
     def fillRect( self, x, y, w, h, color):
         i = x
         for i in range(x, x + w):
-            self.writeFastVLine(i, y, h, color)
+            self.drawFastVLine(i, y, h, color)
             
     def drawFastVLine( self, x, y, h, color):
         self.writeLine( x, y, x, y + h - 1, color)
         
     def drawFastHLine( self, x, y, w, color):
         self.writeLine( x, y, x + w - 1, y, color)
-        
-    def writeFastHLine( self, x, y, w, color):
-        self.drawFastHLine( x, y, w, color) 
-        
-    def writeFastVLine( self, x, y, h, color):
-        self.drawFastVLine( x, y, h, color)
         
     def writeLine(self, x0, y0, x1, y1, color):
         # print("x0: {0}, x1: {1}, y0: {2}, y1: {3}".format(x0, x1, y0, y1))  
@@ -551,7 +587,7 @@ class GFX:
             x += 1
             
     def fillCircle( self, x0, y0, r, color):
-        self.writeFastVLine(x0, y0 - r, 2 * r + 1, color)
+        self.drawFastVLine(x0, y0 - r, 2 * r + 1, color)
         self.fillCircleHelper(x0, y0, r, 3, 0, color)
         
         
@@ -579,23 +615,23 @@ class GFX:
             # print("f: {0}; x: {1}; y: {2}; cname: {3}".format(f, x, y, cornername))
             if (cornername & 0x1):
                 # print("Vline at: {0}, {1}, {2}".format(x0+x, y0-y, 2*y+1))
-                self.writeFastVLine( x0 + x, y0 - y, 2 * y + 1 + delta, color)
+                self.drawFastVLine( x0 + x, y0 - y, 2 * y + 1 + delta, color)
                 # print("Vline at: {0}, {1}, {2}".format(x0+y, y0-x, 2*x+1))
-                self.writeFastVLine( x0 + y, y0 - x, 2 * x + 1 + delta, color)
+                self.drawFastVLine( x0 + y, y0 - x, 2 * x + 1 + delta, color)
                 
             if (cornername & 0x2):
                 # print("Vline at: {0}, {1}, {2}".format(x0-x, y0-y, 2*y+1))
-                self.writeFastVLine( x0 - x, y0 - y, 2 * y + 1 + delta, color)
+                self.drawFastVLine( x0 - x, y0 - y, 2 * y + 1 + delta, color)
                 # print("Vline at: {0}, {1}, {2}".format(x0-y, y0-x, 2*x+1))
-                self.writeFastVLine( x0 - y, y0 - x, 2 * x + 1 + delta, color)
+                self.drawFastVLine( x0 - y, y0 - x, 2 * x + 1 + delta, color)
           
             
             
     def drawRoundRect( self, x, y, w, h, r, color):
-        self.writeFastHLine(x + r    , y        , w - 2 * r , color)
-        self.writeFastHLine(x + r    , y + h - 1, w - 2 * r , color)
-        self.writeFastVLine(x        , y + r    , h - 2 * r , color)
-        self.writeFastVLine(x + w - 1, y + r    , h - 2 * r , color)
+        self.drawFastHLine(x + r    , y        , w - 2 * r , color)
+        self.drawFastHLine(x + r    , y + h - 1, w - 2 * r , color)
+        self.drawFastVLine(x        , y + r    , h - 2 * r , color)
+        self.drawFastVLine(x + w - 1, y + r    , h - 2 * r , color)
         
         self.drawCircleHelper(x + r        , y + r        , r , 1, color)
         self.drawCircleHelper(x + w - r - 1, y + r        , r , 2, color)
@@ -639,7 +675,7 @@ class GFX:
                 a = x2
             elif x2 > b :
                 b = x2
-            self.writeFastHLine(a, y0, b- a + 1, color)
+            self.drawFastHLine(a, y0, b- a + 1, color)
             return
         dx01 = x1 - x0
         dy01 = y1 - y0
@@ -664,7 +700,7 @@ class GFX:
             sb += dx02
             if a > b:
                 a, b = b, a
-            self.writeFastHLine( a, y, b - a + 1, color)
+            self.drawFastHLine( a, y, b - a + 1, color)
             
         sa = dx12 * (y - y1)
         sb = dx02 * (y - y0)
@@ -682,7 +718,50 @@ class GFX:
             
             if a > b:
                 a, b = b, a     # swap the values
-            self.writeFastHLine(a, y, b - a + 1, color)
+            self.drawFastHLine(a, y, b - a + 1, color)
+            
+    def readDisplayCommand(self, cmd):
+        val = self.read(cmd)
+        return val
+            
+    def getRotation(self):
+        return self.rotation
+        
+    #   Rotation can be 0 (normal - portrait sd card on upper right)
+    #                   1 (landscape - sd card on upper left
+    #                   2 (portrait - SD card on bottom left
+    #                   3 (landscape - SD card on bottom right
+    #   So, in other words, start at 0, 1 rotates counter-clockwise 90 degrees,
+    #                                   2 rotates another 90 degrees CC
+    #                                   3 rotates another 90 degrees CC
+    
+    def setRotation(self, rot): 
+        self.Rotation = (rot & 3)
+        mba = 0x00
+        # print("Rotating %d" % self.Rotation)
+        if (self.Rotation == 0 or self.Rotation == 2):
+            self._width = self.WIDTH
+            self._height = self.HEIGHT
+            if (self.Rotation == 0):
+                # print("R=0")
+                mba = bytearray([self.ILI9341_MADCTL_MX | self.ILI9341_MADCTL_BGR])
+                self.write(command = self.ILI9341_MADCTL, data=mba)
+            else:
+                # print("R=2")
+                mba = bytearray([self.ILI9341_MADCTL_MY | self.ILI9341_MADCTL_BGR])
+                self.write(command = self.ILI9341_MADCTL, data=mba)                      
+        elif (self.Rotation == 1 or self.Rotation == 3):
+            self._width = self.HEIGHT
+            self._height = self.WIDTH
+            if (self.Rotation == 1):
+                # print("R=1")
+                mba = bytearray([self.ILI9341_MADCTL_MV | self.ILI9341_MADCTL_BGR])
+                self.write(command = self.ILI9341_MADCTL, data=mba)
+            else:
+                # print("R=3")
+                mba = bytearray([self.ILI9341_MADCTL_MX | self.ILI9341_MADCTL_MY | self.ILI9341_MADCTL_MV | self.ILI9341_MADCTL_BGR])
+                self.write(command = self.ILI9341_MADCTL, data=mba)
+            
             
             
         
