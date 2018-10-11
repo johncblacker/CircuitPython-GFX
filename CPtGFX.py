@@ -37,7 +37,7 @@ from adafruit_rgb_display.rgb import DisplaySPI
 class GFX(DisplaySPI):
     GFX_HAS_FONTFILE = False
     def __init__(self, swidth, sheight, pixel=None, font_name=None, write=None, read=None, 
-                    fill=None, scroll=None):
+                    fill=None, scroll=None, newWidth=None, newHeight=None):
         self._width = swidth
         self.WIDTH = swidth  #  These are raw screen size
         self.HEIGHT = sheight   # variables - NEVER CHANGE!
@@ -45,13 +45,17 @@ class GFX(DisplaySPI):
         self._pixel = pixel
         self.font_name = font_name
         self.write = write
+        self.newWidth = newWidth
+        self.newHeight = newHeight
         self.read = read
         self.fill = fill
         self.scroll = scroll
         self.fontfile = None
+        self.hasWrapped = False
         self.TextSize = 1
         self.Rotation = 0
-        self.wrap = True   # default textwrap is true
+        self.wrap = True   # default textwrap is on
+        self.wrapErase = False  # - if set, screen will be erased on "y" wrap
         self.Cursor_x = 0
         self.Cursor_y = 0
         self.GFXfirst = 0x20
@@ -103,6 +107,7 @@ class GFX(DisplaySPI):
             self.font_name = self.fontname
             self.GFXfirst = self.GFXfirst
             self.GFXlast = self.fontfile.GFXlast
+            self.GFXMinYadvance = self.fontfile.GFXMinYadvance
             self.GFX_HAS_FONTFILE = True
 
     def deinit(self):
@@ -217,10 +222,10 @@ class GFX(DisplaySPI):
                             self.setCursorX = x + xo + xx
                             self.setCursorY = y + yo + yy
                         else:
-                            self.writeFillRect( int(x + ( xo + xx) * int(self.TextSize / 2)), int(y + (yo + yy) * (self.TextSize)), 
+                            self.writeFillRect( int(x + ( xo + xx) * int(self.TextSize)), int(y + (yo + yy) * (self.TextSize)), 
                                                 self.TextSize, self.TextSize, self.TextColor)
-                            self.setCursorX = int(x + (xo + xx) * int(self.Textsize / 2))
-                            self.SetCursorY = int(y + (y0 + yy) * int(self.Textsize / 2))
+                            self.setCursorX = int(x + (xo + xx) * int(self.Textsize ))
+                            self.SetCursorY = int(y + (y0 + yy) * int(self.Textsize ))
                     tb = bitmapbyte << 1
                     if tb >= 256:
                         bitmapbyte = tb - 256
@@ -248,6 +253,9 @@ class GFX(DisplaySPI):
     def setCursor(self, x, y):
         self.Cursor_x = x
         self.Cursor_y = y
+        if (self.font_name == 'font5x8.bin'):
+            return
+        self.Cursor_y += abs(self.fontfile.GFXMinYadvance) + 1
         
     def getCursor(self):
         return self.Cursor_x, self.Cursor_y
@@ -273,6 +281,12 @@ class GFX(DisplaySPI):
         
     def setScroll(self, yval):
         self.scroll(yval)
+        
+    def setWrapErase(self, wraperase):
+        self.wrapErase = True
+        
+    def getWrapErase(self):
+        return self.wrapErase
         
         
     def getBitmap(self, ch):
@@ -320,10 +334,23 @@ class GFX(DisplaySPI):
                         # print("wrap: %d" % self.wrap)
                         # print("width: %d" % self._width)
                         if (self.wrap and (( self.Cursor_x + self.TextSize * ( xo + w)) > self._width )):
+                            if (self.hasWrapped and (not self.wrapErase)):   # if we've already erased screen, OK
+                                self.fillWRect(0, self.Cursor_y - self.fontfile.GFXyadvance,
+                                              self._width,
+                                              self.fontfile.GFXyadvance, self.BgColor)
+                            
                             self.Cursor_x = 0
                             self.Cursor_y += self.TextSize * self.fontfile.GFXyadvance
                             if (self.Cursor_y  > self._height):
+                                self.hasWrapped = True  # once we've wrapped on y, have to keep erasing text
+                                                        # each time we wrap on x
                                 self.Cursor_y = self.fontfile.GFXyadvance
+                                if self.wrapErase:
+                                    self.setFill(self.BgColor)
+                                else:
+                                    self.fillWRect(self.Cursor_x, self.Cursor_y - self.fontfile.GFXyadvance,
+                                                  self._width,
+                                                  self.fontfile.GFXyadvance, self.BgColor)
                             self.draw_char(tc, self.Cursor_x, self.Cursor_y)
                         else:
                             self.draw_char(tc, self.Cursor_x, self.Cursor_y)
@@ -439,10 +466,10 @@ class GFX(DisplaySPI):
         else:
             return 0    # not valid for custom fonts
             
-    def width(self):
+    def getWidth(self):
         return self._width
         
-    def height(self):
+    def getHeight(self):
         return self._height
         
             
@@ -457,6 +484,11 @@ class GFX(DisplaySPI):
         i = x
         for i in range(x, x + w):
             self.drawFastVLine(i, y, h, color)
+            
+    def fillWRect(self, x, y, w, h, color):
+        i = 0
+        for i in range(y, y + h):
+            self.drawFastHLine(x, i, w, color)
             
     def drawFastVLine( self, x, y, h, color):
         self.writeLine( x, y, x, y + h - 1, color)
@@ -736,12 +768,16 @@ class GFX(DisplaySPI):
     #                                   3 rotates another 90 degrees CC
     
     def setRotation(self, rot): 
+        self.wrapErase = True
+        self.hasWrapped = False
         self.Rotation = (rot & 3)
         mba = 0x00
         # print("Rotating %d" % self.Rotation)
         if (self.Rotation == 0 or self.Rotation == 2):
             self._width = self.WIDTH
             self._height = self.HEIGHT
+            self.newWidth(self._width)
+            self.newHeight(self._height)
             if (self.Rotation == 0):
                 # print("R=0")
                 mba = bytearray([self.ILI9341_MADCTL_MX | self.ILI9341_MADCTL_BGR])
@@ -753,6 +789,8 @@ class GFX(DisplaySPI):
         elif (self.Rotation == 1 or self.Rotation == 3):
             self._width = self.HEIGHT
             self._height = self.WIDTH
+            self.newWidth(self._width)
+            self.newHeight(self._height)
             if (self.Rotation == 1):
                 # print("R=1")
                 mba = bytearray([self.ILI9341_MADCTL_MV | self.ILI9341_MADCTL_BGR])

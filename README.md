@@ -32,6 +32,7 @@ Functions provided in the CPtGFX.py module are:
   - writerectangle
   - drawRect
   - fillRect
+  - fillWRect - faster version of above if w > h
   - drawFastVLine
   - drawFastHLine
   - writeFastHLine
@@ -54,8 +55,8 @@ Functions provided in the CPtGFX.py module are:
   
   It's important to understand that although the screen (ILI9341, for example) specifies that x=0, y=0 is the upper left and default fonts wiil be rendered using the upper left as the base cursor position; converted fonts use the lower left corner of the "boundary box" as the baseline.  Take a look at the converted font files and you'll see that the "y" offset in the character glyph's is a negative number.  Point is, you'll have to do a little experimenting to find the ideal position for your lines.  If you were to write a line of text at point (0,0) you'd just see a single pixel line!  Read the write-up about the Adafruit GFX Graphics Library available on their website.  most of the graphics drawing (and text) functions follow the conventions outlined in the aforementioned write-up.  I've provided a basic test program that can be used to get started and provide some understanding of how to use this library.
   
-Also included are several font converted font files to get started with for for reference; a compiled version of the mpy-cross.exe program which can be used to pre-compile the CPtGFX.py program into a .mpy file that's significantly smaller that the .py version.  I haven't tried compiling the converted font file (yet) so I don't know how it might work or how much reduction in space might be gained.
-I'll take that as a todo and report back once I find the time to try it out.  Lastly, a pre-compiled .cpp fontconvert program is provided to product python compatible versions of font files, since to include freetype as part of CircuitPython is probably not feasible.  The converted font file is a python CLASS called GFXFONT and contains bitmaps, glyphs, several font related constants and a _repr_ function so the GFXFONT could be printed.
+Also included are several font converted font files to get started with for for reference; a compiled version of the mpy-cross.exe program which can be used to pre-compile the CPtGFX.py program into a .mpy file that's significantly smaller that the .py version.  
+Lastly, a pre-compiled .cpp fontconvert program is provided to product python compatible versions of font files, since to include freetype as part of CircuitPython is probably not feasible.  The converted font file is a python CLASS called GFXFONT and contains bitmaps, glyphs, several font related constants and a _repr_ function so the GFXFONT could be printed.
 
 Report any and all problems so I can correct them.  If you want to take a stab at providing canvas and frame type functions like those in the original GFX.cpp file, have at it.  I don't think it's worth the time.
 

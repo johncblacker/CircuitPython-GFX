@@ -284,8 +284,8 @@ def testFilledTriangles():
     return t
 
 def testRoundRects():
-    cx = gfx.getWidth() // 2 - 1
-    cy = gfx.getHeight() // 2 - 1
+    cx = gfx.getWidth() / 2 - 1
+    cy = gfx.getHeight() / 2 - 1
     
     gfx.setFill(BLACK)
     
@@ -293,23 +293,20 @@ def testRoundRects():
     start = time.monotonic()
     i = 0
     for i in range(0, w, 6):
-        i2 = i // 2
-        gfx.drawRoundRect( cx - i2, cy - i2, i, i, i // 8, color565(i, 0, 0))
+        i2 = i / 2
+        gfx.drawRoundRect( cx - i2, cy - i2, i, i, i / 8, color565(i, 0, 0))
         
     return time.monotonic() - start
 
-def testFillRoundRects():
-    cx = gfx.getWidth() // 4 - 1
-    cy = gfx.getHeight() // 4 - 1
+def textFillRoundRects():
+    cx = gfx.getWidth() / 2 - 1
+    cy = gfx.getHeight() / 2 - 1
     i = 0
-   
-    m = min(gfx.getWidth() // 2, gfx.getHeight() // 2)
     gfx.setFill(BLACK)
     start = time.monotonic()
-    print(min)
-    for i in range(m, 20, -6):
-        i2 = i // 4
-        gfx.fillRoundRect( cx - i2, cy - i2, i, i, i // 8, color565(i2, i * 2, i2))
+    for i in range(min(gfx.getWidth(), gfx.getHeight()), 20, 6):
+        i2 = i / 2
+        gfx.fillRoundRect( cx - i2, cy - i2, i, i, i / 8, color565(0, i, 0))
     return time.monotonic() - start
  
 #   Main processing begins here 
@@ -341,32 +338,32 @@ time.sleep(.5)
 # print(testRects(GREEN))
 # time.sleep(.5)
 
-# print("Rectangles (filled)                 ")
-# print(testFillRects(YELLOW, MAGENTA))
-# time.sleep(.5)
+print("Rectangles (filled)                 ")
+print(testFillRects(YELLOW, MAGENTA))
+time.sleep(.5)
 
-# print("Circles (filled )                   ")
-# print(testFilledCircles(10, MAGENTA))
-# time.sleep(.5)
+print("Circles (filled )                   ")
+print(testFilledCircles(10, MAGENTA))
+time.sleep(.5)
 
-# print("Circles (outline)                   ")
-# print(testCircles(10,     WHITE))
-# time.sleep(.5)
+print("Circles (outline)                   ")
+print(testCircles(10,     WHITE))
+time.sleep(.5)
 
-# print("Triangles (outline)                 ")
-# print(testTriangles())
-# time.sleep(.5)
+print("Triangles (outline)                 ")
+print(testTriangles())
+time.sleep(.5)
 
-# print("Triangles (filled)                  ")
-# print(testFilledTriangles())
-# time.sleep(.5)
+print("Triangles (filled)                  ")
+print(testFilledTriangles())
+time.sleep(.5)
 
-#print("Rounded rects (outline)             ")
-#print(testRoundRects())
-# time.sleep(.5)
+print("Rounded rects (outline)             ")
+print(testRoundRects())
+time.sleep(.5)
 
 print("Rounded rects (filled)              ")
-print(testFillRoundRects())
+print(testFilledTriangles())
 time.sleep(.5)
 
 # for rotation in range(0, 4):

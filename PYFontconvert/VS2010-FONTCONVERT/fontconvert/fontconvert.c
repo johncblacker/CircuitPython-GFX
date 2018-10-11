@@ -1,40 +1,4 @@
 /*
-Modification of the original Adafruit_GFX font converter tool to makefont
-the output compatible with the Python language.  Instead of a "C" typedef
-.h file, the output from this version is a .py file and is included in
-CPtGFX.py by use of the "import fontfilename" statement.
-Therefore, the Adafruit copyright for the original fontconvert.c program
-in the Adafruit-GFX-Master/fontconvert/ folder continues to apply.
-This program can be compiled using the original make process as outlined
-in the Adafruit-GFX-Master/fontconvert directory instructions or can be
-compiled using Microsoft Visual Studio 10 using the solution files in this
-folder.
-
-Software License Agreement (BSD License)
-
-Copyright (c) 2018 John Blacker.  All rights reserved.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are met:
-
-- Redistributions of source code must retain the above copyright notice,
-  this list of conditions and the following disclaimer.
-- Redistributions in binary form must reproduce the above copyright notice,
-  this list of conditions and the following disclaimer in the documentation
-  and/or other materials provided with the distribution.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
-LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-POSSIBILITY OF SUCH DAMAGE.
-
 TrueType to Adafruit_GFX font converter.  Derived from Peter Jakobs'
 Adafruit_ftGFX fork & makefont tool, and Paul Kourany's Adafruit_mfGFX.
 
@@ -96,6 +60,7 @@ int main(int argc, char *argv[]) {
 	FT_BitmapGlyphRec *g;
 	GFXglyph          *table;
 	uint8_t            bit;
+	int8_t			   minYadvance = 0;
 
 	// Parse command line.  Valid syntaxes are:
 	//   fontconvert [filename] [size]
@@ -262,6 +227,7 @@ int main(int argc, char *argv[]) {
 
 	// Output glyph attributes table (one per character)
 	printf("\n\n\t\tself.GFXglyphs = (\n");
+	minYadvance = 0;
 	for(i=first, j=0; i<=last; i++, j++) {
 		printf("\t\t( %5d, %3d, %3d, %3d, %4d, %4d )",
 		  table[j].bitmapOffset,
@@ -270,6 +236,9 @@ int main(int argc, char *argv[]) {
 		  table[j].xAdvance,
 		  table[j].xOffset,
 		  table[j].yOffset);
+		if (table[j].yOffset < minYadvance) {
+			minYadvance = table[j].yOffset;
+		}
 		if(i < last) {
 			printf(",   ## 0x%02X", i);
 			if((i >= ' ') && (i <= '~')) {
@@ -298,6 +267,7 @@ int main(int argc, char *argv[]) {
 		printf("\t\tself.GFXfirst = 0x%02X\n", first);
 		printf("\t\tself.GFXlast = 0x%02X\n", last);
 		printf("\t\tself.GFXyadvance = %d\n",face->size->metrics.height >> 6); 
+		printf("\t\tself.GFXMinYadvance = %d\n", minYadvance);
 		printf("\t\t\t\t## from face->size->metrics.height");
 		//printf("  0x%02X, 0x%02X, %ld };\n\n",
 		//	first, last, face->size->metrics.height >> 6);
