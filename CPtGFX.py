@@ -216,7 +216,7 @@ class GFX(DisplaySPI):
                         bitcount = 0
                     # print("bitmapchar: {:#010b}".format(bitmapbyte))
                     if (bitmapbyte & 0x80):
-                        if (self.cd  == 1):
+                        if (self.TextSize  == 1):
                             self._pixel( x + xo + xx , y + yo + yy , self.TextColor)
                             # print("wrote pixel at x: %d; y: %d " % (x+xo+xx, y+yo+yy))
                             self.setCursorX = x + xo + xx
