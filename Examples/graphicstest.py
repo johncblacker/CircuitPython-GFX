@@ -60,11 +60,8 @@ display = ili9341.ILI9341(spi, cs=cs, dc=dc)
 display.newWidth(240)
 display.newHeight(320)
 
-gfx = GFX.GFX(240, 320, pixel=display.pixel, font_name=ariali12pt7b, 
-          write=display.write, 
-          read=display.read,
-          fill=display.fill,
-          scroll=display.scroll,
+gfx = GFX.GFX(240, 320, pixel=display.pixel, font_name=ariali12pt7b,
+          dispobj=display,
           newWidth=display.newWidth,
           newHeight=display.newHeight)
           
@@ -188,23 +185,23 @@ def testFastLines(color1, color2):
 def testRects(color):
     w = gfx.getWidth()
     h = gfx.getHeight()
-    cx = gfx.getWidth() / 2
-    cy = gfx.getHeight() / 2
+    cx = gfx.getWidth() // 2
+    cy = gfx.getHeight() // 2
     
     gfx.setFill(BLACK)
     n   =   min(w, h)
     i = 0
     start = time.monotonic()
     for i in range(2, n, 6):
-        i2 = i / 2
+        i2 = i // 2
         gfx.drawRect(cx - i2, cy - i2, i, i, color)
         
     return time.monotonic() - start
 
 
 def testFillRects(color1, color2):
-    cx = gfx.getWidth() / 2 - 1
-    cy = gfx.getHeight() / 2 - 1
+    cx = gfx.getWidth() // 2 - 1
+    cy = gfx.getHeight() // 2 - 1
     
     gfx.setFill(BLACK)
     n = min(gfx.getWidth(), gfx.getHeight())
@@ -212,8 +209,9 @@ def testFillRects(color1, color2):
     gfx.setFill(BLACK)
     i = t = 0
     for i in range(n, 0, -6):
-        i2 = i / 2
+        i2 = i // 2 - 1
         start = time.monotonic()
+        
         gfx.fillRect(cx - i2, cy - i2, i, i, color1)
         t += time.monotonic() - start
         gfx.drawRect(cx - i2, cy - i2, i, i, color2)
@@ -248,8 +246,8 @@ def testCircles(radius, color):
 
 
 def testTriangles():
-    cx = gfx.getWidth() / 2 - 1
-    cy = gfx.getHeight() / 2 - 1
+    cx = gfx.getWidth() //2 - 1
+    cy = gfx.getHeight() // 2 - 1
     
     gfx.setFill(BLACK)
     n = min(cx, cy)
@@ -264,8 +262,8 @@ def testTriangles():
     return time.monotonic() - start
 
 def testFilledTriangles():
-    cx = gfx.getWidth() / 2 - 1
-    cy = gfx.getHeight() / 2 - 1
+    cx = gfx.getWidth() // 2 - 1
+    cy = gfx.getHeight() // 2 - 1
     
     gfx.setFill(BLACK)
     t = 0
@@ -299,16 +297,20 @@ def testRoundRects():
     return time.monotonic() - start
 
 def testFillRoundRects():
-    cx = gfx.getWidth() // 4 - 1
-    cy = gfx.getHeight() // 4 - 1
+    cx = gfx.getWidth() // 2 - 1
+    cy = gfx.getHeight() // 2 - 1
     i = 0
    
-    m = min(gfx.getWidth() // 2, gfx.getHeight() // 2)
+    m = min(gfx.getWidth() , gfx.getHeight() )
     gfx.setFill(BLACK)
     start = time.monotonic()
-    print(min)
+
+    # display.fill_rectangle(0, 50, 100, 100,  RED)
+    gfx.fillRoundRect(100, 150, 50, 50, 10, BLUE)
+    time.sleep(5)
+    return time.monotonic() - start 
     for i in range(m, 20, -6):
-        i2 = i // 4
+        i2 = i // 2
         gfx.fillRoundRect( cx - i2, cy - i2, i, i, i // 8, color565(i2, i * 2, i2))
     return time.monotonic() - start
  
@@ -324,54 +326,54 @@ print("Let the benchmark begin at:        %f" % time.monotonic())
 time.sleep(.1)
 print("Screen fill                           ")
 print(testFillScreen())
+time.sleep(.5) 
+for rotation in range(0, 4):
+    if (rotation == 1 or rotation == 3):
+        gfx.setWrapErase(False)
+    else:
+        gfx.setWrapErase(True)
+    gfx.setRotation(rotation)
+    testText()
+    time.sleep(5) 
+print("Lines                                ")
+print(testLines(CYAN))  # cyan lines
 time.sleep(.5)
-# print("Text                                 ")
-# print(testText())
-# time.sleep(3)  
-  
-# print("Lines                                ")
-#print(testLines(CYAN))  # cyan lines
-#time.sleep(.5)
 
-# print("Horiz/Vert Lines                    ")
-# print(testFastLines(RED, BLUE))
-# time.sleep(.5)
+print("Horiz/Vert Lines                    ")
+print(testFastLines(RED, BLUE))
+time.sleep(.5)
 
-# print("Rectangles (outline)                ")
-# print(testRects(GREEN))
-# time.sleep(.5)
+print("Rectangles (outline)                ")
+print(testRects(GREEN))
+time.sleep(.5)
 
-# print("Rectangles (filled)                 ")
-# print(testFillRects(YELLOW, MAGENTA))
-# time.sleep(.5)
+print("Rectangles (filled)                 ")
+print(testFillRects(YELLOW, MAGENTA))
+time.sleep(.5)
 
-# print("Circles (filled )                   ")
-# print(testFilledCircles(10, MAGENTA))
-# time.sleep(.5)
+print("Circles (filled )                   ")
+print(testFilledCircles(10, MAGENTA))
+time.sleep(.5)
 
-# print("Circles (outline)                   ")
-# print(testCircles(10,     WHITE))
-# time.sleep(.5)
+print("Circles (outline)                   ")
+print(testCircles(10,     WHITE))
+time.sleep(.5)
 
-# print("Triangles (outline)                 ")
-# print(testTriangles())
-# time.sleep(.5)
+print("Triangles (outline)                 ")
+print(testTriangles())
+time.sleep(.5)
 
-# print("Triangles (filled)                  ")
-# print(testFilledTriangles())
-# time.sleep(.5)
+print("Triangles (filled)                  ")
+print(testFilledTriangles())
+time.sleep(.5)
 
-#print("Rounded rects (outline)             ")
-#print(testRoundRects())
-# time.sleep(.5)
+print("Rounded rects (outline)             ")
+print(testRoundRects())
+time.sleep(.5)
 
-print("Rounded rects (filled)              ")
+print("Rounded rects (filled)                ")
 print(testFillRoundRects())
 time.sleep(.5)
 
-# for rotation in range(0, 4):
-#     gfx.setRotation(rotation)
-#     testText()
-#     time.sleep(5)
 
 print("Done!")

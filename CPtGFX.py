@@ -36,20 +36,20 @@ from adafruit_rgb_display.rgb import DisplaySPI
 
 class GFX(DisplaySPI):
     GFX_HAS_FONTFILE = False
-    def __init__(self, swidth, sheight, pixel=None, font_name=None, write=None, read=None, 
-                    fill=None, scroll=None, newWidth=None, newHeight=None):
+    def __init__(self, swidth, sheight, pixel=None, font_name=None, dispobj=None,
+                 newWidth=None, newHeight=None):
         self._width = swidth
         self.WIDTH = swidth  #  These are raw screen size
         self.HEIGHT = sheight   # variables - NEVER CHANGE!
         self._height = sheight
+        self.displayobj = dispobj
+        print(self.displayobj.fill_rectangle)
         self._pixel = pixel
         self.font_name = font_name
-        self.write = write
+        
         self.newWidth = newWidth
         self.newHeight = newHeight
-        self.read = read
-        self.fill = fill
-        self.scroll = scroll
+       
         self.fontfile = None
         self.hasWrapped = False
         self.TextSize = 1
@@ -277,10 +277,10 @@ class GFX(DisplaySPI):
         return self.wrap
         
     def setFill(self, color):
-        self.fill(color)
+        self.displayobj.fill(color)
         
     def setScroll(self, yval):
-        self.scroll(yval)
+        self.displayobj.scroll(yval)
         
     def setWrapErase(self, wraperase):
         self.wrapErase = True
@@ -484,17 +484,23 @@ class GFX(DisplaySPI):
         i = x
         for i in range(x, x + w):
             self.drawFastVLine(i, y, h, color)
+        # self.displayobj.fill_rectangle(x, y, w, h, color)
             
     def fillWRect(self, x, y, w, h, color):
-        i = 0
-        for i in range(y, y + h):
-            self.drawFastHLine(x, i, w, color)
+        # i = 0
+        # for i in range(y, y + h):
+        #    self.drawFastHLine(x, i, w, color)
+        self.displayobj.fill_rectangle(x, y, w, y, color)
             
     def drawFastVLine( self, x, y, h, color):
-        self.writeLine( x, y, x, y + h - 1, color)
+        # print("fv: %d, %d, %d" % (x, y, h))
+        # self.writeLine( x, y, x, y + h - 1, color)
+        self.displayobj.vline(x, y, h, color)
         
     def drawFastHLine( self, x, y, w, color):
-        self.writeLine( x, y, x + w - 1, y, color)
+        # print("fh: %d, %d, %d" % (x, y, w))
+        # self.writeLine( x, y, x + w - 1, y, color)
+        self.displayobj.hline(x, y, w, color)
         
     def writeLine(self, x0, y0, x1, y1, color):
         # print("x0: {0}, x1: {1}, y0: {2}, y1: {3}".format(x0, x1, y0, y1))  
@@ -515,6 +521,7 @@ class GFX(DisplaySPI):
             ystep = 1
         else:
             ystep = -1
+        # print("wl: %d, %d" % (x0, x1+1))
         for x0 in range(x0, x1 + 1):
             if (steep):
                 self._pixel(int(y0), int(x0), color)
@@ -753,7 +760,7 @@ class GFX(DisplaySPI):
             self.drawFastHLine(a, y, b - a + 1, color)
             
     def readDisplayCommand(self, cmd):
-        val = self.read(cmd)
+        val = self.displayobj.read(cmd)
         return val
             
     def getRotation(self):
@@ -781,11 +788,11 @@ class GFX(DisplaySPI):
             if (self.Rotation == 0):
                 # print("R=0")
                 mba = bytearray([self.ILI9341_MADCTL_MX | self.ILI9341_MADCTL_BGR])
-                self.write(command = self.ILI9341_MADCTL, data=mba)
+                self.displayobj.write(command = self.ILI9341_MADCTL, data=mba)
             else:
                 # print("R=2")
                 mba = bytearray([self.ILI9341_MADCTL_MY | self.ILI9341_MADCTL_BGR])
-                self.write(command = self.ILI9341_MADCTL, data=mba)                      
+                self.displayobj.write(command = self.ILI9341_MADCTL, data=mba)                      
         elif (self.Rotation == 1 or self.Rotation == 3):
             self._width = self.HEIGHT
             self._height = self.WIDTH
@@ -794,11 +801,11 @@ class GFX(DisplaySPI):
             if (self.Rotation == 1):
                 # print("R=1")
                 mba = bytearray([self.ILI9341_MADCTL_MV | self.ILI9341_MADCTL_BGR])
-                self.write(command = self.ILI9341_MADCTL, data=mba)
+                self.displayobj.write(command = self.ILI9341_MADCTL, data=mba)
             else:
                 # print("R=3")
                 mba = bytearray([self.ILI9341_MADCTL_MX | self.ILI9341_MADCTL_MY | self.ILI9341_MADCTL_MV | self.ILI9341_MADCTL_BGR])
-                self.write(command = self.ILI9341_MADCTL, data=mba)
+                self.displayobj.write(command = self.ILI9341_MADCTL, data=mba)
             
             
             
