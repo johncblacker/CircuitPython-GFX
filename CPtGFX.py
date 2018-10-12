@@ -93,6 +93,7 @@ class GFX(DisplaySPI):
  
     def setFont(self, fontname):
         self.fontname = fontname
+        self.font_name = fontname
         if self.fontname == "font5x8.bin" :
             self.font_name = "font5x8.bin"
             self._font = open(self.font_name, 'rb') 
@@ -103,6 +104,7 @@ class GFX(DisplaySPI):
             self.fontfile = self.font_name
         else:
             #self.mod = import self.fontname
+            print(fontname)
             self.fontfile = self.font_name.GFXfont()
             self.font_name = self.fontname
             self.GFXfirst = self.GFXfirst
