@@ -51,10 +51,10 @@ class GFX(DisplaySPI):
         self.newHeight = newHeight
        
         self.fontfile = None
-        self.hasWrapped = False
         self.TextSize = 1
         self.Rotation = 0
         self.wrap = True   # default textwrap is on
+        self.hasWrapped = False
         self.wrapErase = False  # - if set, screen will be erased on "y" wrap
         self.Cursor_x = 0
         self.Cursor_y = 0
@@ -218,16 +218,16 @@ class GFX(DisplaySPI):
                         bitcount = 0
                     # print("bitmapchar: {:#010b}".format(bitmapbyte))
                     if (bitmapbyte & 0x80):
-                        if (self.TextSize  == 1):
+                        if (self.getTextSize()  == 1):
                             self._pixel( x + xo + xx , y + yo + yy , self.TextColor)
                             # print("wrote pixel at x: %d; y: %d " % (x+xo+xx, y+yo+yy))
                             self.setCursorX = x + xo + xx
                             self.setCursorY = y + yo + yy
                         else:
-                            self.writeFillRect( int(x + ( xo + xx) * int(self.TextSize)), int(y + (yo + yy) * (self.TextSize)), 
-                                                self.TextSize, self.TextSize, self.TextColor)
-                            self.setCursorX = int(x + (xo + xx) * int(self.Textsize ))
-                            self.SetCursorY = int(y + (y0 + yy) * int(self.Textsize ))
+                            self.writeFillRect( int(x + ( xo + xx) * int(self.getTextSize())), int(y + (yo + yy) * (self.getTextSize())), 
+                                                self.getTextSize(), self.TextSize, self.TextColor)
+                            self.setCursorX = int(x + (xo + xx) * int(self.getTextSize() ))
+                            self.SetCursorY = int(y + (yo + yy) * int(self.getTextSize() ))
                     tb = bitmapbyte << 1
                     if tb >= 256:
                         bitmapbyte = tb - 256
@@ -268,9 +268,11 @@ class GFX(DisplaySPI):
     def getCursorY(self):
         return self.CursorY
         
-    def setTextSize(self, s):
-        if s <= 0 or s > 3:
+    def setTextSize(self, newSize):
+        if newSize <= 0 or newSize > 3:
             self.TextSize = 1
+        else:
+            self.TextSize = newSize
         
     def setTextWrap(self, wrap):   # wrap = true/false
         self.wrap = wrap
@@ -284,8 +286,8 @@ class GFX(DisplaySPI):
     def setScroll(self, yval):
         self.displayobj.scroll(yval)
         
-    def setWrapErase(self, wraperase):
-        self.wrapErase = True
+    def setWrapErase(self, wrapErase):
+        self.wrapErase = wrapErase
         
     def getWrapErase(self):
         return self.wrapErase
@@ -312,6 +314,7 @@ class GFX(DisplaySPI):
         
     
     def text(self, text ):
+        # print("textsize: %d" % self.getTextSize())
         # Draw the specified text at the specified location.
         x = self.Cursor_x
         y = self.Cursor_y
@@ -321,47 +324,62 @@ class GFX(DisplaySPI):
             for tc in text:
                 if (tc == '\n'):    # new line?
                     self.Cursor_x = 0
-                    self.Cursor_y += self.TextSize and self.fontfile.GFXyadvance
+                    self.Cursor_y += self.getTextSize() and self.fontfile.GFXyadvance
                 else:
                     c = ord(tc) # ensure c is a number, not a string
                     if (( c >= self.GFXfirst) and ( c <= self.GFXlast)):
                         nc = ord(tc) - self.GFXfirst
                         self.cGlyph = self.fontfile.GFXglyphs[nc] # get GFXglyph for character  
                         # print(self.cGlyph)
-                        w = self.cGlyph[1]
+                        w = self.cGlyph[1] 
                         h = self.cGlyph[2]
                         xo = self.cGlyph[3]
                         yo = self.cGlyph[4]
                         # print(self.Cursor_x + self.TextSize * ( xo + w))
                         # print("wrap: %d" % self.wrap)
                         # print("width: %d" % self._width)
-                        if (self.wrap and (( self.Cursor_x + self.TextSize * ( xo + w)) > self._width )):
-                            if (self.hasWrapped and (not self.wrapErase)):   # if we've already erased screen, OK
-                                self.fillWRect(0, self.Cursor_y - self.fontfile.GFXyadvance,
-                                              self._width,
-                                              self.fontfile.GFXyadvance, self.BgColor)
-                            
-                            self.Cursor_x = 0
-                            self.Cursor_y += self.TextSize * self.fontfile.GFXyadvance
+                        #
+                        # check if wrap is set;  if wrap is not set, let text run off edge of screen.
+                        # otherwise check to see if we've exceeded screen width, then check wrapErase
+                        # to see what to do next
+                        if (self.wrap and (( self.Cursor_x + self.getTextSize() * ( xo + w)) > self._width )):                            
+                            # check to see if text has wrapped...if so but wrapErase is False, just erase enought
+                            # to write the next text; otherwise erase the screen 
+                            if (self.hasWrapped and self.wrapErase == False):
+                                # print("sfwr: %d, %d, %d, %d" % (0, self.Cursor_y, self._width, 
+                                #       self.fontfile.GFXyadvance * self.getTextSize()))
+                                self.fillWRect(0, self.Cursor_y,
+                                               self._width,
+                                               self.fontfile.GFXyadvance * self.getTextSize() + 6, self.BgColor)                             
+                            self.Cursor_x = 0   # reset x to beginning of line
+                            self.Cursor_y += self.getTextSize() * self.fontfile.GFXyadvance # position the y point
                             if (self.Cursor_y  > self._height):
-                                self.hasWrapped = True  # once we've wrapped on y, have to keep erasing text
-                                                        # each time we wrap on x
-                                self.Cursor_y = self.fontfile.GFXyadvance
+                                self.hasWrapped = True
+                                self.Cursor_y = abs(self.fontfile.GFXyadvance) * self.getTextSize()
+                                # print("Wrap erase: %s" % self.getWrapErase())
+                                # print("Has wrapped: %s" % self.hasWrapped)
                                 if self.wrapErase:
+                                    # wrapErase is set so erase whole screen
                                     self.setFill(self.BgColor)
+
                                 else:
-                                    self.fillWRect(self.Cursor_x, self.Cursor_y - self.fontfile.GFXyadvance,
+                                    self.Cursor_y = abs(self.fontfile.GFXyadvance) * self.getTextSize()
+                                    # erase enough space to write another line of text
+                                    # print("fwr: %d, %d, %d, %d" % (self.Cursor_x,
+                                    #       0, self._width, 
+                                    #      abs(self.fontfile.GFXyadvance) * self.getTextSize()))
+                                    self.fillWRect(self.Cursor_x, 0,
                                                   self._width,
-                                                  self.fontfile.GFXyadvance, self.BgColor)
+                                                  abs(self.fontfile.GFXyadvance) * self.getTextSize() + 6, self.BgColor)
                             self.draw_char(tc, self.Cursor_x, self.Cursor_y)
                         else:
                             self.draw_char(tc, self.Cursor_x, self.Cursor_y)
-                    self.Cursor_x += self.cGlyph[3] * self.TextSize #advance cursor based on textsize and xadvance in glyph      
+                    self.Cursor_x += self.cGlyph[3] * self.getTextSize() #advance cursor based on textsize and xadvance in glyph      
         else:
             # print("default font")
             color = self.getTextColor
             bgcolor = self.getBgColor
-            size = self.getTextSize
+            size = self.getTextSize()
   
             # Draw the specified text at the specified location using font5x8.bin
             for i in range(0, len(text)):
@@ -492,7 +510,7 @@ class GFX(DisplaySPI):
         # i = 0
         # for i in range(y, y + h):
         #    self.drawFastHLine(x, i, w, color)
-        self.displayobj.fill_rectangle(x, y, w, y, color)
+        self.displayobj.fill_rectangle(x, y, w, h, color)
             
     def drawFastVLine( self, x, y, h, color):
         # print("fv: %d, %d, %d" % (x, y, h))
@@ -777,7 +795,7 @@ class GFX(DisplaySPI):
     #                                   3 rotates another 90 degrees CC
     
     def setRotation(self, rot): 
-        self.wrapErase = True
+        # self.wrapErase = True
         self.hasWrapped = False
         self.Rotation = (rot & 3)
         mba = 0x00
