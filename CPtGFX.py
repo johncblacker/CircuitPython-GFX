@@ -43,7 +43,6 @@ class GFX(DisplaySPI):
         self.HEIGHT = sheight   # variables - NEVER CHANGE!
         self._height = sheight
         self.displayobj = dispobj
-        print(self.displayobj.fill_rectangle)
         self._pixel = pixel
         self.font_name = font_name
         
@@ -103,8 +102,10 @@ class GFX(DisplaySPI):
             self.GFX_HAS_FONTFILE = True
             self.fontfile = self.font_name
         else:
-            #self.mod = import self.fontname
-            print(fontname)
+            #self.mod = import self.font_name
+            print(fontname.__name__)
+            print(self.fontname.__name__ + '.bin')
+            self._bitmaps = open(self.fontname.__name__ + '.bin', 'rb')
             self.fontfile = self.font_name.GFXfont()
             self.font_name = self.fontname
             self.GFXfirst = self.GFXfirst
@@ -171,7 +172,7 @@ class GFX(DisplaySPI):
 
         ##c -= (uint8_t)pgm_read_byte(&gfxFont->first);
             c = ord(ch) - self.GFXfirst
-            cBitmap = self.fontfile.GFXbitmaps
+            
             self.cGlyph = self.fontfile.GFXglyphs[c]
         ##GFXglyph *glyph  = &(((GFXglyph *)pgm_read_pointer(&gfxFont->glyph))[c]);
         ##uint8_t  *bitmap = (uint8_t *)pgm_read_pointer(&gfxFont->bitmap);
@@ -210,8 +211,12 @@ class GFX(DisplaySPI):
                 for xx in range (0, w ):
                     # print(" {0} {1:#010b}".format(bo, bitcount))
                     if(not(bitcount & 7)):       # checking 7 bits in each byte
-                        bitmapbyte = cBitmap[bo]
-                        # print(type(bitmapbyte))
+                       
+                        self._bitmaps.seek(bo)
+                        bitmapbyte = ord(self._bitmaps.read(1))
+                        # print(bitmapbyte)
+                        # print(type(bitmapbyte)) 
+                        # print("c: %d, bo: %d" % (c, bo))
                     bitcount += 1 
                     if bitcount >= 8:
                         bo += 1
