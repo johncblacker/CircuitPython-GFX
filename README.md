@@ -1,10 +1,10 @@
-# CircuitPython-GFX
+# CircuitPython-GFX  (rev: 1.2b)
 A python port of the Adafruit_GFX.cpp modules plus test fonts and tools. Included in this repository are: 
 - CPtGFX.py, a python port of the Adafruit_GFX.cpp module; 
 - a binary version of the mpy-cross compiler compiled under Windows 10; 
 - a special version of the Adafruit fontconvert program that outputs font files compatible with the CPtGFX.py module; 
 - several pre-converted font files to get the user started and allowing the user to see what the converted font files look like.  
-
+- rev: 1.2b changes result in two font files being written <fontname>.py and <fontname>.bin;
 Converted font files (TTF'S) are in python code format so that they can be imported into the CPtGFX module at runtime.  
 
 The converted version of the GFX.cpp file contains the most useful functions.  I undertook this conversion because Adafruit Industries didn't have an acceptable version of the GFX module, written in python with support for the ILI9341 (and similar) displays.  It is my understanding that more robust (and faster) support is under development at Adafruit, but no timeline has been provided.
@@ -57,6 +57,8 @@ Functions provided in the CPtGFX.py module are:
   
 Also included are several font converted font files to get started with for for reference; a compiled version of the mpy-cross.exe program which can be used to pre-compile the CPtGFX.py program into a .mpy file that's significantly smaller that the .py version.  
 Lastly, a pre-compiled .cpp fontconvert program is provided to product python compatible versions of font files, since to include freetype as part of CircuitPython is probably not feasible.  The converted font file is a python CLASS called GFXFONT and contains bitmaps, glyphs, several font related constants and a _repr_ function so the GFXFONT could be printed.
+Rev: 1.2b changes have resulted in a smaller API footprint because the font bitmap data now resides in a .bin file on the CircuitPython drive.
+Rev: 1.2b changes are in the "testing" branch on Github.
 
 Report any and all problems so I can correct them.  If you want to take a stab at providing canvas and frame type functions like those in the original GFX.cpp file, have at it.  I don't think it's worth the time.
 
