@@ -45,6 +45,17 @@ class GFX(DisplaySPI):
         self.displayobj = dispobj
         self._pixel = pixel
         self.font_name = font_name
+        print("Using font: %s" % self.font_name)
+        # print(self.displayobj)
+        objName = "{}".format(self.displayobj)
+        # print(objName)        
+        if "ST7735R" in objName:
+            self.display = "ST7735R"
+        elif "ILI9341" in objName:
+            self.display = "ILI9341"
+        else:
+            raise Exception("Unsupported display" + objName)
+        print("Found: %s display" % self.display)
         
         self.newWidth = newWidth
         self.newHeight = newHeight
@@ -83,8 +94,8 @@ class GFX(DisplaySPI):
         self.ILI9341_MADCTL_MH  =   0X04    # Horizontal refresh order right to left
 
 
-        if (self.font_name == "default" or self.font_name == "font5X8.bin"):
-            self.setFont("font5X8.bin")
+        if (self.font_name == "default" or self.font_name == "font5x8.bin"):
+            self.setFont("font5x8.bin")
         elif (self.font_name != None):
             self.setFont(self.font_name)
         else:
@@ -99,6 +110,7 @@ class GFX(DisplaySPI):
             self._font_width, self._font_height = struct.unpack("BB", self._font.read(2))
             self.GFXfirst = 0x20
             self.GFXlast = 0x7e
+            self.GFXMinYadvance = 10
             self.GFX_HAS_FONTFILE = True
             self.fontfile = self.font_name
         else:
@@ -134,9 +146,9 @@ class GFX(DisplaySPI):
         if self.font_name == "font5x8.bin":
 
             # Don't draw the character if it will be clipped off the visible area.
-            if x < -self._font_width or x >= self._width or \
-                y < -self._font_height or y >= self._height:
-                return
+            # if x < -self._font_width or x >= self._width or \
+            #     y < -self._font_height or y >= self._height:
+            #     return
             # Go through each column of the character.
             for char_x in range(self._font_width):
                 # Grab the byte for the current column of font data.
@@ -146,10 +158,17 @@ class GFX(DisplaySPI):
                 for char_y in range(self._font_height):
                     # Draw a pixel for each bit that's flipped on.
                     if (line >> char_y) & 0x1:
-                        # print("x: %d; y: %d" % (x + char_x, y + char_y))
-                        self._pixel(x + char_x, y + char_y, self.TextColor)
-                        self.setCursorX = x + char_x
-                        self.setCursorY = y + char_y
+                        if self.TextSize == 1:
+                            # print("x: %d; y: %d" % (x + char_x, y + char_y))
+                            self._pixel(x + char_x, y + char_y, self.TextColor)
+                        else:
+                            self.fillRect(x + char_x * self.TextSize, 
+                                          y + char_y * self.TextSize,
+                                          self.TextSize, 
+                                          self.TextSize,
+                                          self.TextColor)
+            self.Cursor_x = self.Cursor_x + (5 * self.getTextSize()) + 1   # update x position - 2 pixels between characters
+            # print("DrawChar self.Cursor_x: %d" % self.Cursor_x)
         else:
         # Custom font (created by CPfontconvert.exe ( a stand-alone c++ program)
         # CPfontconvert takes a <fontfile.ttf> and creates a .py "Class" object that contains:
@@ -226,21 +245,20 @@ class GFX(DisplaySPI):
                         if (self.getTextSize()  == 1):
                             self._pixel( x + xo + xx , y + yo + yy , self.TextColor)
                             # print("wrote pixel at x: %d; y: %d " % (x+xo+xx, y+yo+yy))
-                            self.setCursorX = x + xo + xx
-                            self.setCursorY = y + yo + yy
+                            # self.setCursor(x + xo + xx, y + yo + yy)                            
                         else:
                             self.writeFillRect( int(x + ( xo + xx) * int(self.getTextSize())), int(y + (yo + yy) * (self.getTextSize())), 
                                                 self.getTextSize(), self.TextSize, self.TextColor)
-                            self.setCursorX = int(x + (xo + xx) * int(self.getTextSize() ))
-                            self.SetCursorY = int(y + (yo + yy) * int(self.getTextSize() ))
+                            # self.setCursor(int(x + (xo + xx) * int(self.getTextSize() )), int(y + (yo + yy) * int(self.getTextSize() )))
                     tb = bitmapbyte << 1
                     if tb >= 256:
                         bitmapbyte = tb - 256
                     else:
-                        bitmapbyte = tb
-                
-
+                        bitmapbyte = tb               
     # End classic vs custom font
+    
+    
+    #   Functions to expose variable to the end-user
     
     def setTextColor(self, tcolor):
         self.TextColor = tcolor
@@ -267,12 +285,6 @@ class GFX(DisplaySPI):
     def getCursor(self):
         return self.Cursor_x, self.Cursor_y
                 
-    def getCursorX(self):
-        return self.CursorX
-        
-    def getCursorY(self):
-        return self.CursorY
-        
     def setTextSize(self, newSize):
         if newSize <= 0 or newSize > 3:
             self.TextSize = 1
@@ -280,6 +292,11 @@ class GFX(DisplaySPI):
             self.TextSize = newSize
         
     def setTextWrap(self, wrap):   # wrap = true/false
+        # TextWrap  =   True;   means that when either x or y overflow, the x and y values
+        #                           will be reset to the next line before text is drawn.
+        #           =   False;  means that if either x or y overflow, the text function
+        #                           no more text drawn, Cursor_x and Cursor_y will be reset
+        #                           to (0, 0) and the text function will be exited. 
         self.wrap = wrap
         
     def getTextWrap(self):
@@ -295,7 +312,14 @@ class GFX(DisplaySPI):
         self.wrapErase = wrapErase
         
     def getWrapErase(self):
+        # WrapErase = True means that when y overflows, the entire screen will be erased before
+        #                   another line of text is drawn.  Since the screen is clear, it is
+        #                   not necessary to erase the screen on each x overflow.
+        #           = False means that when y overflows and/or x overflows, only a rectangle
+        #                   the size of a line of text will be drawn in the background color
+        #                   thus erasing enough screen for a line of text.
         return self.wrapErase
+        
         
         
     def getBitmap(self, ch):
@@ -321,6 +345,8 @@ class GFX(DisplaySPI):
     def text(self, text ):
         # print("textsize: %d" % self.getTextSize())
         # Draw the specified text at the specified location.
+        # print("Height: %d" % self._height)
+        # print("Width: %d" % self._width)
         x = self.Cursor_x
         y = self.Cursor_y
         # print(self.font_name)
@@ -329,7 +355,7 @@ class GFX(DisplaySPI):
             for tc in text:
                 if (tc == '\n'):    # new line?
                     self.Cursor_x = 0
-                    self.Cursor_y += self.getTextSize() and self.fontfile.GFXyadvance
+                    self.Cursor_y += self.getTextSize() * self.fontfile.GFXyadvance
                 else:
                     c = ord(tc) # ensure c is a number, not a string
                     if (( c >= self.GFXfirst) and ( c <= self.GFXlast)):
@@ -340,58 +366,94 @@ class GFX(DisplaySPI):
                         h = self.cGlyph[2]
                         xo = self.cGlyph[3]
                         yo = self.cGlyph[4]
-                        # print(self.Cursor_x + self.TextSize * ( xo + w))
-                        # print("wrap: %d" % self.wrap)
-                        # print("width: %d" % self._width)
-                        #
+                        self.minyadv = abs(self.fontfile.GFXMinYadvance)
+                        
                         # check if wrap is set;  if wrap is not set, let text run off edge of screen.
                         # otherwise check to see if we've exceeded screen width, then check wrapErase
                         # to see what to do next
-                        if (self.wrap and (( self.Cursor_x + self.getTextSize() * ( xo + w)) > self._width )):                            
-                            # check to see if text has wrapped...if so but wrapErase is False, just erase enought
-                            # to write the next text; otherwise erase the screen 
-                            if (self.hasWrapped and self.wrapErase == False):
-                                # print("sfwr: %d, %d, %d, %d" % (0, self.Cursor_y, self._width, 
-                                #       self.fontfile.GFXyadvance * self.getTextSize()))
-                                self.fillWRect(0, self.Cursor_y,
-                                               self._width,
-                                               self.fontfile.GFXyadvance * self.getTextSize() + 6, self.BgColor)                             
-                            self.Cursor_x = 0   # reset x to beginning of line
-                            self.Cursor_y += self.getTextSize() * self.fontfile.GFXyadvance # position the y point
-                            if (self.Cursor_y  > self._height):
-                                self.hasWrapped = True
-                                self.Cursor_y = abs(self.fontfile.GFXyadvance) * self.getTextSize()
-                                # print("Wrap erase: %s" % self.getWrapErase())
-                                # print("Has wrapped: %s" % self.hasWrapped)
-                                if self.wrapErase:
-                                    # wrapErase is set so erase whole screen
-                                    self.setFill(self.BgColor)
-
-                                else:
-                                    self.Cursor_y = abs(self.fontfile.GFXyadvance) * self.getTextSize()
-                                    # erase enough space to write another line of text
-                                    # print("fwr: %d, %d, %d, %d" % (self.Cursor_x,
-                                    #       0, self._width, 
-                                    #      abs(self.fontfile.GFXyadvance) * self.getTextSize()))
-                                    self.fillWRect(self.Cursor_x, 0,
-                                                  self._width,
-                                                  abs(self.fontfile.GFXyadvance) * self.getTextSize() + 6, self.BgColor)
-                            self.draw_char(tc, self.Cursor_x, self.Cursor_y)
+                        
+                        #   check to see if x or y are going to overflow
+                        #       if no overflow is immenent, we can draw the character
+                        # print("cursor x: %d" % self.Cursor_x)
+                        # print("YAdvance: %d" % self.fontfile.GFXyadvance)
+                        if ( (self.Cursor_x + (self.getTextSize() * ( xo + w))) > self._width):
+                            self.Cursor_x = 0
+                            self.Cursor_y += self.minyadv * self.getTextSize() + 1
+                            xOverFlow = True
                         else:
+                            xOverFlow = False
+                        # print("cursor y: %d" % self.Cursor_y)
+                        if ( self.Cursor_y > self._height):
+                            self.hasWrapped = True
+                            self.Cursor_y = 0
+                            self.Cursor_x = 0                           
+                            yOverFlow = True
+                            if (self.wrapErase):
+                                self.setFill(self.BgColor)
+                        else:
+                            yOverFlow = False
+                            # self.hasWrapped = False
+                        if ((not xOverFlow) and (not yOverFlow) and not self.hasWrapped):
+                            # if neither has overflowed, draw the character on current line
                             self.draw_char(tc, self.Cursor_x, self.Cursor_y)
-                    self.Cursor_x += self.cGlyph[3] * self.getTextSize() #advance cursor based on textsize and xadvance in glyph      
+                            self.Cursor_x += self.cGlyph[3] * self.getTextSize()    # advance x cursor
+                        else:   # handle overflow based on wrap and wrapErase settings
+                            if (self.hasWrapped):    # hasWrapped == True if we've overflowed on y
+                                # print("cursorX: %d, cursorY: %s" % (self.Cursor_x, self.Cursor_y))
+                                self.fillWRect(self.Cursor_x, 
+                                               self.Cursor_y - self.minyadv - 1,
+                                               self._width,
+                                               self.minyadv * self.getTextSize() + 1, self.BgColor)
+                            self.draw_char(tc, self.Cursor_x, self.Cursor_y)
+                            self.Cursor_x += self.cGlyph[3] * self.getTextSize() #advance cursor based on textsize and xadvance in glyph      
         else:
+            # print("tin self.Cursor_x: %d" % self.Cursor_x)
             # print("default font")
             color = self.getTextColor
             bgcolor = self.getBgColor
             size = self.getTextSize()
+            w = 5
+            yadv = 8 * self.getTextSize() + 3
   
             # Draw the specified text at the specified location using font5x8.bin
             for i in range(0, len(text)):
-                # print("printing: %s" % text[i])
-                self.draw_char(text[i], x + (i * (self._font_width + 1)), y, color, bgcolor, size)
-    
-    
+            
+                if (text[i] == '\n'):    # new line?
+                    self.Cursor_x = 0
+                    self.Cursor_y += self.getTextSize() * yadv
+                else:
+                    #   First, check and adjust x and y cursor positions for overflow
+                    if ( (self.Cursor_x + (self.getTextSize() * w)) > self._width):
+                                self.Cursor_x = 0
+                                self.Cursor_y += yadv
+                                xOverFlow = True
+                    else:
+                        xOverFlow = False
+                    if ( self.Cursor_y > self._height):
+                        self.hasWrapped = True
+                        self.Cursor_x = 0
+                        self.Cursor_y = 0
+                        yOverFlow = True
+                        if (self.wrapErase):
+                            self.setFill(self.BgColor)
+                        else:
+                            self.hasWrapped = False
+                    else:
+                        yOverFlow = False
+                        
+                    if ((not xOverFlow) and (not yOverFlow)):
+                        # if neither has overflowed, draw the character on current line
+                        self.draw_char(text[i], self.Cursor_x, self.Cursor_y)
+                    else:   # handle overflow based on wrap and wrapErase settings
+                        if (self.hasWrapped):    # hasWrapped == True if we've overflowed on y
+                            self.fillWRect(self.Cursor_x, 
+                                       self.Cursor_y,
+                                       self._width,
+                                       yadv * self.getTextSize() + 7, self.BgColor)
+                        self.draw_char(text[i], self.Cursor_x, self.Cursor_y)
+        #   End of default font handling
+    #   End of text() function
+           
     
     # - Pass a character, returns updated values of x, y, minx, miny, maxx, maxy
     def charBounds(self, c, x, y, minx, miny, maxx, maxy):
@@ -784,8 +846,8 @@ class GFX(DisplaySPI):
                 a, b = b, a     # swap the values
             self.drawFastHLine(a, y, b - a + 1, color)
             
-    def readDisplayCommand(self, cmd):
-        val = self.displayobj.read(cmd)
+    def readDisplayCommand(self, cmd, cnt):
+        val = self.displayobj.read(cmd, cnt)
         return val
             
     def getRotation(self):
@@ -812,11 +874,17 @@ class GFX(DisplaySPI):
             self.newHeight(self._height)
             if (self.Rotation == 0):
                 # print("R=0")
-                mba = bytearray([self.ILI9341_MADCTL_MX | self.ILI9341_MADCTL_BGR])
+                if self.display == "ST7735R":
+                    mba = bytearray([self.ILI9341_MADCTL_MX | self.ILI9341_MADCTL_MY | self.ILI9341_MADCTL_BGR])
+                else:
+                    mba = bytearray([self.ILI9341_MADCTL_MX | self.ILI9341_MADCTL_BGR])
                 self.displayobj.write(command = self.ILI9341_MADCTL, data=mba)
             else:
                 # print("R=2")
-                mba = bytearray([self.ILI9341_MADCTL_MY | self.ILI9341_MADCTL_BGR])
+                if self.display == "ST7735R":
+                    mba = bytearray([self.ILI9341_MADCTL_BGR])
+                else:
+                    mba = bytearray([self.ILI9341_MADCTL_MY | self.ILI9341_MADCTL_BGR])
                 self.displayobj.write(command = self.ILI9341_MADCTL, data=mba)                      
         elif (self.Rotation == 1 or self.Rotation == 3):
             self._width = self.HEIGHT
@@ -825,11 +893,17 @@ class GFX(DisplaySPI):
             self.newHeight(self._height)
             if (self.Rotation == 1):
                 # print("R=1")
-                mba = bytearray([self.ILI9341_MADCTL_MV | self.ILI9341_MADCTL_BGR])
+                if self.display == "ST7735R":
+                    mba = bytearray([self.ILI9341_MADCTL_MY | self.ILI9341_MADCTL_MV | self.ILI9341_MADCTL_BGR])
+                else:
+                    mba = bytearray([self.ILI9341_MADCTL_MV | self.ILI9341_MADCTL_BGR])
                 self.displayobj.write(command = self.ILI9341_MADCTL, data=mba)
             else:
                 # print("R=3")
-                mba = bytearray([self.ILI9341_MADCTL_MX | self.ILI9341_MADCTL_MY | self.ILI9341_MADCTL_MV | self.ILI9341_MADCTL_BGR])
+                if self.display == "ST7735R":
+                    mba = bytearray([self.ILI9341_MADCTL_MX | self.ILI9341_MADCTL_MV | self.ILI9341_MADCTL_BGR])
+                else:
+                    mba = bytearray([self.ILI9341_MADCTL_MX | self.ILI9341_MADCTL_MY | self.ILI9341_MADCTL_MV | self.ILI9341_MADCTL_BGR])
                 self.displayobj.write(command = self.ILI9341_MADCTL, data=mba)
             
             

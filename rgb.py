@@ -26,6 +26,9 @@
 Base class for all RGB Display devices
 
 * Author(s): Radomir Dopieralski, Michael McWethy
+
+            Modifications by: John Blacker (added newHeight and newWidth functions to fix
+                                            problem when display rotates.
 """
 
 import time
@@ -154,6 +157,10 @@ class Display: #pylint: disable-msg=no-member
     def vline(self, x, y, height, color):
         """Draw a vertical line."""
         self.fill_rectangle(x, y, 1, height, color)
+        
+#   The following two functions were added by John Blacker
+#       in order to fix problems when the display is rotated - the width's and height weren't being
+#                                                               propogated to all classes.
         
     def newWidth(self, width):
         self.width = width
