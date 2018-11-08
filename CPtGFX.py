@@ -280,7 +280,7 @@ class GFX(DisplaySPI):
         self.Cursor_y = y
         if (self.font_name == 'font5x8.bin'):
             return
-        self.Cursor_y += abs(self.fontfile.GFXMinYadvance) + 1
+        self.Cursor_y += abs(self.fontfile.GFXyadvance) + 1
         
     def getCursor(self):
         return self.Cursor_x, self.Cursor_y
@@ -355,7 +355,7 @@ class GFX(DisplaySPI):
             for tc in text:
                 if (tc == '\n'):    # new line?
                     self.Cursor_x = 0
-                    self.Cursor_y += self.getTextSize() * self.fontfile.GFXyadvance
+                    self.Cursor_y += self.getTextSize() * (abs(self.fontfile.GFXyadvance) + 1)
                 else:
                     c = ord(tc) # ensure c is a number, not a string
                     if (( c >= self.GFXfirst) and ( c <= self.GFXlast)):
@@ -366,7 +366,7 @@ class GFX(DisplaySPI):
                         h = self.cGlyph[2]
                         xo = self.cGlyph[3]
                         yo = self.cGlyph[4]
-                        self.minyadv = abs(self.fontfile.GFXMinYadvance)
+                        self.minyadv = abs(self.fontfile.GFXyadvance)
                         
                         # check if wrap is set;  if wrap is not set, let text run off edge of screen.
                         # otherwise check to see if we've exceeded screen width, then check wrapErase
@@ -378,18 +378,19 @@ class GFX(DisplaySPI):
                         # print("YAdvance: %d" % self.fontfile.GFXyadvance)
                         if ( (self.Cursor_x + (self.getTextSize() * ( xo + w))) > self._width):
                             self.Cursor_x = 0
-                            self.Cursor_y += self.minyadv * self.getTextSize() + 1
+                            self.Cursor_y += (self.minyadv + 1) * self.getTextSize()
                             xOverFlow = True
                         else:
                             xOverFlow = False
                         # print("cursor y: %d" % self.Cursor_y)
                         if ( self.Cursor_y > self._height):
                             self.hasWrapped = True
-                            self.Cursor_y = 0
+                            self.Cursor_y = (self.minyadv + 1) * self.getTextSize()
                             self.Cursor_x = 0                           
                             yOverFlow = True
                             if (self.wrapErase):
                                 self.setFill(self.BgColor)
+                                
                         else:
                             yOverFlow = False
                             # self.hasWrapped = False
@@ -401,9 +402,9 @@ class GFX(DisplaySPI):
                             if (self.hasWrapped):    # hasWrapped == True if we've overflowed on y
                                 # print("cursorX: %d, cursorY: %s" % (self.Cursor_x, self.Cursor_y))
                                 self.fillWRect(self.Cursor_x, 
-                                               self.Cursor_y - self.minyadv - 1,
+                                               self.Cursor_y - (self.minyadv - 1 * self.getTextSize()),
                                                self._width,
-                                               self.minyadv * self.getTextSize() + 1, self.BgColor)
+                                               (self.minyadv + 1) * self.getTextSize(), self.BgColor)
                             self.draw_char(tc, self.Cursor_x, self.Cursor_y)
                             self.Cursor_x += self.cGlyph[3] * self.getTextSize() #advance cursor based on textsize and xadvance in glyph      
         else:
@@ -413,14 +414,14 @@ class GFX(DisplaySPI):
             bgcolor = self.getBgColor
             size = self.getTextSize()
             w = 5
-            yadv = 8 * self.getTextSize() + 3
+            yadv = (8 + 3 ) * self.getTextSize()
   
             # Draw the specified text at the specified location using font5x8.bin
             for i in range(0, len(text)):
             
                 if (text[i] == '\n'):    # new line?
                     self.Cursor_x = 0
-                    self.Cursor_y += self.getTextSize() * yadv
+                    self.Cursor_y += yadv
                 else:
                     #   First, check and adjust x and y cursor positions for overflow
                     if ( (self.Cursor_x + (self.getTextSize() * w)) > self._width):
@@ -435,9 +436,7 @@ class GFX(DisplaySPI):
                         self.Cursor_y = 0
                         yOverFlow = True
                         if (self.wrapErase):
-                            self.setFill(self.BgColor)
-                        else:
-                            self.hasWrapped = False
+                            self.setFill(self.BgColor)                                                 
                     else:
                         yOverFlow = False
                         
@@ -449,7 +448,7 @@ class GFX(DisplaySPI):
                             self.fillWRect(self.Cursor_x, 
                                        self.Cursor_y,
                                        self._width,
-                                       yadv * self.getTextSize() + 7, self.BgColor)
+                                       yadv, self.BgColor)
                         self.draw_char(text[i], self.Cursor_x, self.Cursor_y)
         #   End of default font handling
     #   End of text() function
